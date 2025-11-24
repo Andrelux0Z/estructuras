@@ -5,23 +5,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-
-// Definimos un struct para los articulos con el formato que decidimos en clase
-struct articulo {
-    char nombre[21];
-    char apellidos[41];
-    char titulo[71];
-    char ruta[51];
-    int ano;
-    char resumen[81];
-};
-
-// Arbol heap (como hicimos un struct del articulo, nada más sorteamos por eso lsito)
-struct arbol_numeros {
-    struct articulo** datos;
-    int tamano; //elementos acutales
-    int capacidad; //max
-};
+#include <stdio.h>
+#include "arboles.h"
 
 // Como es un heap, podemos usar nada más el indice para sacar padre e hijos
 int padre(int i) {
@@ -38,17 +23,17 @@ int hijo_der(int i) {
 
 // Esta funcion es para hacer un swap entre articulos, lo vamos a usar para acomodar lueg
 // Funciona nada más con un puntero temporal
-void swap_articulo(struct articulo** a, struct articulo** b) {
-    struct articulo* temp = *a;
+void swap_articulo(articulo** a, articulo** b) {
+    articulo* temp = *a;
     *a = *b;
     *b = temp;
 }
 
 // Esta funcion crea los arboles, recibimos capaciddad maxima inicial y retornamos el arbol
-struct arbol_numeros* arbol_numeros_crear(int capacidad_inicial) {
-    struct arbol_numeros* arbol = calloc(1, sizeof(struct arbol_numeros));
+arbol_numeros* arbol_numeros_crear(int capacidad_inicial) {
+    arbol_numeros* arbol = calloc(1, sizeof(arbol_numeros));
 
-    arbol->datos = calloc(1, sizeof(struct articulo*) * capacidad_inicial);
+    arbol->datos = calloc(1, sizeof(articulo*) * capacidad_inicial);
     arbol->tamano = 0;
     arbol->capacidad = capacidad_inicial;
     return arbol;
@@ -56,7 +41,7 @@ struct arbol_numeros* arbol_numeros_crear(int capacidad_inicial) {
 
 // Funcion para poner numero en el arbol y que se acomode
 // nota: como estamos implementando un max heap, los grandes van arriba
-void acomodar_numero(struct arbol_numeros* arbol, int i) {
+void acomodar_numero(arbol_numeros* arbol, int i) {
     while (i > 0) {
         int p = padre(i);
 
@@ -70,12 +55,12 @@ void acomodar_numero(struct arbol_numeros* arbol, int i) {
 
 
 // Funcion para insertar el articulo en el arbol
-int arbol_numeros_insertar(struct arbol_numeros* arbol, struct articulo *art) {
+int arbol_numeros_insertar(arbol_numeros* arbol, articulo *art) {
     if (arbol->tamano == arbol->capacidad) {
         // esto es una verificacion por si ya no hay espacio
 
         int nuevo = arbol->capacidad * 2;
-        struct articulo** temp = realloc(arbol->datos, sizeof(struct articulo*) * nuevo);
+        articulo** temp = realloc(arbol->datos, sizeof(articulo*) * nuevo);
 
         arbol->datos = temp;
         arbol->capacidad = nuevo;
@@ -88,23 +73,8 @@ int arbol_numeros_insertar(struct arbol_numeros* arbol, struct articulo *art) {
     return 1; // todo bien
 }
 
-// Enum que sirve para determinar cual forma de las que usan letras vamos a hacer el arbol
-enum orden_letras{
-    TITULO,
-    APELLIDOS,
-    RUTA
-};
-
-// Arbol heap (como hicimos un struct del articulo, nada más sorteamos por eso lsito)
-struct arbol_letras {
-    struct articulo** datos;
-    int tamano; //elementos acutales
-    int capacidad; //max
-    enum orden_letras orden; // segun que se ordena el arbol
-};
-
 // Con esta funcion nosotros obtenemos el texto que se va a usar como clave
-char* obtener_clave_texto(struct articulo* a, enum orden_letras tipo) {
+char* obtener_clave_texto(articulo* a, orden_letras tipo) {
     switch (tipo) {
         case TITULO:    
             return a->titulo;
@@ -117,15 +87,11 @@ char* obtener_clave_texto(struct articulo* a, enum orden_letras tipo) {
     }
 }
 
-
-// Esta funcion es para hacer un swap entre articulos, lo vamos a usar para acomodar lueg
-// Funciona nada más con un puntero temporal
-
 // Esta funcion crea los arboles, recibimos capaciddad maxima inicial y retornamos el arbol
-struct arbol_letras* arbol_letras_crear(int capacidad_inicial, enum orden_letras tipo) {
-    struct arbol_letras* arbol = calloc(1, sizeof(struct arbol_letras));
+arbol_letras* arbol_letras_crear(int capacidad_inicial, orden_letras tipo) {
+    arbol_letras* arbol = calloc(1, sizeof(arbol_letras));
 
-    arbol->datos = calloc(capacidad_inicial, sizeof(struct articulo*));
+    arbol->datos = calloc(capacidad_inicial, sizeof(articulo*));
     arbol->tamano = 0;
     arbol->capacidad = capacidad_inicial;
     arbol->orden = tipo;
@@ -134,7 +100,7 @@ struct arbol_letras* arbol_letras_crear(int capacidad_inicial, enum orden_letras
 
 // Funcion para poner letras en el arbol y que se acomoden
 // nota: como estamos implementando un max heap, los grandes van arriba
-void acomodar_letras(struct arbol_letras* arbol, int i) {
+void acomodar_letras(arbol_letras* arbol, int i) {
     while (i > 0) {
         int p = padre(i);
         char* hijo = obtener_clave_texto(arbol->datos[i], arbol->orden);
@@ -150,10 +116,10 @@ void acomodar_letras(struct arbol_letras* arbol, int i) {
 }
 
 // Funcion para insertar el articulo en el arbol
-int arbol_letras_insertar(struct arbol_letras* arbol, struct articulo *art) {
+int arbol_letras_insertar(arbol_letras* arbol, articulo *art) {
     if (arbol->tamano == arbol->capacidad) {
         int nueva = arbol->capacidad * 2;
-        struct articulo** temp = realloc(arbol->datos, sizeof(struct articulo*) * nueva);
+        articulo** temp = realloc(arbol->datos, sizeof(articulo*) * nueva);
         
         arbol->datos = temp;
         arbol->capacidad = nueva;

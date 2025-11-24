@@ -60,7 +60,123 @@ void consultar_datos()
     getchar();
 }
 
-int main() {
+// Funcion para mostrar articulos ordenados
+void mostrar_articulos(articulo **articulos, int cantidad)
+{
+    if (!articulos || cantidad == 0)
+    {
+        printf("\nNo hay articulos para mostrar.\n");
+        return;
+    }
+
+    printf("\n========================================\n");
+    printf("ARTICULOS ENCONTRADOS: %d\n", cantidad);
+    printf("========================================\n\n");
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        if (articulos[i])
+        {
+            printf("--- Articulo %d ---\n", i + 1);
+            printf("Titulo: %s\n", articulos[i]->titulo);
+            printf("Ano: %d\n", articulos[i]->ano);
+
+            // Quitar /repo/ del inicio de la ruta
+            char *ruta_mostrar = articulos[i]->ruta;
+            if (strncmp(ruta_mostrar, "/repo/", 6) == 0)
+            {
+                ruta_mostrar += 6;
+            }
+            else if (strncmp(ruta_mostrar, "/mnt/data/", 10) == 0)
+            {
+                ruta_mostrar += 10;
+            }
+            printf("Archivo: %s\n", ruta_mostrar);
+
+            printf("Resumen: %s\n", articulos[i]->resumen);
+            printf("\n");
+        }
+    }
+}
+
+// Funcion para ordenar y mostrar articulos
+void ordenar_y_mostrar()
+{
+    int criterio_num, cantidad;
+    criterio_orden criterio;
+
+    printf("\n=== ORDENADOR DE ARTICULOS ===\n\n");
+
+    // Solicitar criterio de ordenamiento
+    printf("Seleccione el criterio de ordenamiento:\n");
+    printf("1. Alfabeticamente por titulo\n");
+    printf("2. Tamano del titulo (cantidad de palabras)\n");
+    printf("3. Nombre del archivo\n");
+    printf("4. Ano de publicacion\n");
+    printf("Opcion: ");
+
+    if (scanf("%d", &criterio_num) == 0)
+    {
+        while (getchar() != '\n')
+            ;
+        printf("Opcion invalida.\n");
+        getchar();
+        return;
+    }
+    while (getchar() != '\n')
+        ;
+
+    // Convertir a enum
+    switch (criterio_num)
+    {
+    case 1:
+        criterio = TITULO_ALFABETICO;
+        break;
+    case 2:
+        criterio = TAMANO_TITULO;
+        break;
+    case 3:
+        criterio = NOMBRE_ARCHIVO;
+        break;
+    case 4:
+        criterio = ANO_PUBLICACION;
+        break;
+    default:
+        printf("Opcion invalida.\n");
+        getchar();
+        return;
+    }
+
+    // Solicitar cantidad
+    printf("\nCuantos articulos desea ver? ");
+    if (scanf("%d", &cantidad) == 0 || cantidad <= 0)
+    {
+        while (getchar() != '\n')
+            ;
+        printf("Cantidad invalida.\n");
+        getchar();
+        return;
+    }
+    while (getchar() != '\n')
+        ;
+
+    // Realizar el ordenamiento
+    printf("\nProcesando...\n");
+    int total_encontrados;
+    articulo **resultados = ordenar_articulos(criterio, cantidad, &total_encontrados);
+
+    // Mostrar resultados
+    mostrar_articulos(resultados, total_encontrados);
+
+    // Liberar memoria
+    liberar_articulos(resultados, total_encontrados);
+
+    printf("\nPresione Enter para continuar...");
+    getchar();
+}
+
+int main()
+{
     int opcion;
 
     printf("Bienvenido al sistema de consulta\n");
@@ -72,7 +188,7 @@ int main() {
         switch (opcion)
         {
         case 1:
-            consultar_datos();
+            ordenar_y_mostrar();
             break;
         case 2:
             mostrar_informacion();
