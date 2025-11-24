@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ordenador.h"
-#include "extractor.h"
 #include "arboles.h"
 
 articulo **ordenar_con_heaps(criterio_orden criterio, int cantidad, int *total_encontrados);
@@ -22,13 +21,11 @@ int mostrar_menu()
 
     if (scanf("%d", &opcion) == 0)
     {
-        while (getchar() != '\n')
-            ;
+        while (getchar() != '\n'); //VSCode me mueve esta coma para abajo cada vez que guardo
         return -1;
     }
 
-    while (getchar() != '\n')
-        ;
+    while (getchar() != '\n'); //sujetador de punto y coma
     return opcion;
 }
 
@@ -171,8 +168,8 @@ articulo **ordenar_con_heaps(criterio_orden criterio, int cantidad, int *total_e
         {
             while (heap->tamano > 0)
             {
-                articulo *lib = arbol_numeros_extraer_max(heap);
-                free(lib);
+                articulo *articulo_a_liberar = arbol_numeros_extraer_max(heap);
+                free(articulo_a_liberar);
             }
             arbol_numeros_destruir(heap);
             *total_encontrados = 0;
@@ -211,8 +208,8 @@ articulo **ordenar_con_heaps(criterio_orden criterio, int cantidad, int *total_e
         {
             while (heap->tamano > 0)
             {
-                articulo *lib = arbol_letras_extraer_max(heap);
-                free(lib);
+                articulo *articulo_a_liberar = arbol_letras_extraer_max(heap);
+                free(articulo_a_liberar);
             }
             arbol_letras_destruir(heap);
             *total_encontrados = 0;

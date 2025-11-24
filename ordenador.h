@@ -3,10 +3,6 @@
 
 #include "arboles.h"
 
-// Extrae el campo n de una linea delimitada por '|'
-// Retorna un puntero al campo extraido (debe ser liberado por el caller)
-char *obtener_campo(const char *linea, int n);
-
 // Funcion para contar palabras en el titulo
 int contar_palabras(const char *texto);
 

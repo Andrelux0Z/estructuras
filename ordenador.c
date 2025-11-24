@@ -192,7 +192,7 @@ void recortar_blancos(char *texto)
     texto[nuevo_tamano] = '\0';
 }
 
-// Lee una linea de tamano variable
+// Lee una linea de tamaño variable
 char *leer_linea(FILE *archivo)
 {
     size_t capacidad = 256;
@@ -239,36 +239,6 @@ char *leer_linea(FILE *archivo)
 
     buffer[longitud] = '\0';
     return buffer;
-}
-
-// Extrae el campo n de una linea delimitada por '|'
-char *obtener_campo(const char *linea, int n)
-{
-    char *copia = strdup(linea);
-    if (!copia)
-    {
-        return NULL;
-    }
-
-    char *parte = strtok(copia, "|");
-    int contador = 1;
-
-    while (contador < n && parte)
-    {
-        parte = strtok(NULL, "|");
-        contador++;
-    }
-
-    if (!parte)
-    {
-        free(copia);
-        return NULL;
-    }
-
-    char *resultado = strdup(parte);
-    free(copia);
-
-    return resultado;
 }
 
 // Cuenta palabras separadas por espacios
@@ -347,33 +317,33 @@ articulo **cargar_articulos(int *total_articulos)
         }
 
         int campo = 0;
-        char *token = strtok(linea, "|");
-        while (token && campo < 6)
+        char *trozo = strtok(linea, "|");
+        while (trozo && campo < 6)
         {
-            recortar_blancos(token);
+            recortar_blancos(trozo);
             switch (campo)
             {
             case 0:
-                strncpy(art->nombre, token, sizeof(art->nombre) - 1);
+                strncpy(art->nombre, trozo, sizeof(art->nombre) - 1);
                 break;
             case 1:
-                strncpy(art->apellidos, token, sizeof(art->apellidos) - 1);
+                strncpy(art->apellidos, trozo, sizeof(art->apellidos) - 1);
                 break;
             case 2:
-                strncpy(art->titulo, token, sizeof(art->titulo) - 1);
+                strncpy(art->titulo, trozo, sizeof(art->titulo) - 1);
                 break;
             case 3:
-                strncpy(art->ruta, token, sizeof(art->ruta) - 1);
+                strncpy(art->ruta, trozo, sizeof(art->ruta) - 1);
                 break;
             case 4:
-                art->ano = atoi(token);
+                art->ano = atoi(trozo);
                 break;
             case 5:
-                strncpy(art->resumen, token, sizeof(art->resumen) - 1);
+                strncpy(art->resumen, trozo, sizeof(art->resumen) - 1);
                 break;
             }
             campo++;
-            token = strtok(NULL, "|");
+            trozo = strtok(NULL, "|");
         }
 
         free(linea);
@@ -431,7 +401,7 @@ articulo **cargar_articulos(int *total_articulos)
     return articulos;
 }
 
-// Ordena usando el heap numerico (anos)
+// Ordena usando el heap de numeros (año)
 articulo **ordenar_por_ano(articulo **todos, int total, int cantidad)
 {
     arbol_numeros *arbol = arbol_numeros_crear(total);
@@ -515,7 +485,7 @@ articulo **ordenar_por_texto(articulo **todos, int total, int cantidad, criterio
     return resultado;
 }
 
-// Comparador para qsort por tamano de titulo
+// Compara tamaños de titulo, devuelve 0 si son iguales, -1 si a < b, 1 si a > b
 int comparar_tamano(const void *a, const void *b)
 {
     const articulo *art_a = *(const articulo **)a;
@@ -528,7 +498,11 @@ int comparar_tamano(const void *a, const void *b)
     {
         return 0;
     }
-    return (palabras_a < palabras_b) ? -1 : 1;
+    if (palabras_a < palabras_b)
+    {
+        return -1;
+    }
+    return 1;
 }
 
 // Ordena por cantidad de palabras en el titulo
@@ -594,7 +568,14 @@ articulo **ordenar_articulos(criterio_orden criterio, int cantidad, int *total_e
         break;
     }
 
-    *total_encontrados = resultado ? cantidad : 0;
+    if (resultado)
+    {
+        *total_encontrados = cantidad;
+    }
+    else
+    {
+        *total_encontrados = 0;
+    }
     return resultado;
 }
 
