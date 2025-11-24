@@ -3,6 +3,7 @@
 #include <string.h>
 #include "ordenador.h"
 #include "extractor.h"
+#include "arboles.h"
 
 // Muestra el menu principal y retorna la opcion seleccionada
 int mostrar_menu()
@@ -59,10 +60,7 @@ void consultar_datos()
     getchar();
 }
 
-// Funcion principal
-int main()
-{
-
+int main() {
     int opcion;
 
     printf("Bienvenido al sistema de consulta\n");

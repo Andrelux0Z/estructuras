@@ -3,6 +3,9 @@
 * uno para los numeros y otra para letras
 */
 
+#include <stdlib.h>
+#include <string.h>
+
 // Definimos un struct para los articulos con el formato que decidimos en clase
 struct articulo {
     char nombre[21];
@@ -117,17 +120,12 @@ char* obtener_clave_texto(struct articulo* a, enum orden_letras tipo) {
 
 // Esta funcion es para hacer un swap entre articulos, lo vamos a usar para acomodar lueg
 // Funciona nada más con un puntero temporal
-void swap_articulo(struct articulo** a, struct articulo** b) {
-    struct articulo* temp = *a;
-    *a = *b;
-    *b = temp;
-}
 
 // Esta funcion crea los arboles, recibimos capaciddad maxima inicial y retornamos el arbol
 struct arbol_letras* arbol_letras_crear(int capacidad_inicial, enum orden_letras tipo) {
     struct arbol_letras* arbol = calloc(1, sizeof(struct arbol_letras));
 
-    arbol->datos = calloc(sizeof(struct articulo*) * capacidad_inicial);
+    arbol->datos = calloc(capacidad_inicial, sizeof(struct articulo*));
     arbol->tamano = 0;
     arbol->capacidad = capacidad_inicial;
     arbol->orden = tipo;
