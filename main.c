@@ -5,6 +5,10 @@
 #include "extractor.h"
 #include "arboles.h"
 
+articulo **ordenar_con_heaps(criterio_orden criterio, int cantidad, int *total_encontrados);
+articulo **extraer_desde_heap_num(arbol_numeros *heap, int cantidad, int *total_encontrados);
+articulo **extraer_desde_heap_letras(arbol_letras *heap, int cantidad, int *total_encontrados);
+
 // Muestra el menu principal y retorna la opcion seleccionada
 int mostrar_menu()
 {
@@ -29,35 +33,194 @@ int mostrar_menu()
 }
 
 // Muestra la informacion del programa
-void mostrar_informacion()
-{
-    printf("\n=== INFORMACION ===\n");
-    printf("Hola\n");
-    printf("Fabian");
+void mostrar_informacion(){
+    printf("\n=== INFORMACION DE LA PROGRA ===\n");
+    printf("La busqueda de Sisifo\n\n");
+
+    printf("La idea de la progra es hacer una forma de buscar artículos sobre corrupcion en Latino America segun algunos datos.\n");
+    printf("Cada articulo tiene un nombre (autor), apellidos (autor), título, ruta, año, resumen).\n");
+ 
+    printf("\nFuncionalidad:\n");
+    printf("Ordenar artículos por diferentes criterios (título, tamaño del título, nombre de archivo, año).\n");
+    printf("\nAutor: Fabian Sanchez y Andres Padilla\n");
+    printf("Estructuras de Datos - II Semestre 2025\n");
+    printf("\nPresione Enter para continuar...");
     getchar();
 }
 
-// Funcion para consultar datos
-void consultar_datos()
-{
-    int numero_linea = 1;
-    int numero_campo = 1;
-
-    printf("\n=== ORDENADOR ===\n");
-    printf("Consultando linea %d, campo %d...\n", numero_linea, numero_campo);
-
-    char *linea = obtener_linea(numero_linea);
-
-    char *campo = obtener_campo(linea, numero_campo);
-    if (campo)
-    {
-        printf("\nResultado: %s\n", campo);
-        free(campo);
+// Llena un heap numerico y regresa los elementos ya ordenados
+articulo** extraer_desde_heap_num(arbol_numeros* heap, int cantidad, int* total_encontrados) {
+    if (!heap) {
+        *total_encontrados = 0;
+        return NULL;
     }
 
-    free(linea);
-    printf("\nPresione Enter para continuar...");
-    getchar();
+    if (cantidad > heap->tamano)
+    {
+        cantidad = heap->tamano;
+    }
+
+    articulo **resultado = calloc((size_t)cantidad, sizeof(articulo *));
+    if (!resultado)
+    {
+        *total_encontrados = 0;
+        arbol_numeros_destruir(heap);
+        return NULL;
+    }
+
+    // Extraemos el menor primero para devolverlos en orden ascendente
+    for (int i = 0; i < cantidad; i++)
+    {
+        resultado[i] = arbol_numeros_extraer_max(heap);
+    }
+
+    // Liberamos los que no se van a usar
+    while (heap->tamano > 0)
+    {
+        articulo *sobrante = arbol_numeros_extraer_max(heap);
+        free(sobrante);
+    }
+
+    arbol_numeros_destruir(heap);
+    *total_encontrados = cantidad;
+    return resultado;
+}
+
+// Llena un heap de texto y regresa los elementos ya ordenados
+articulo **extraer_desde_heap_letras(arbol_letras *heap, int cantidad, int *total_encontrados)
+{
+    if (!heap)
+    {
+        *total_encontrados = 0;
+        return NULL;
+    }
+
+    if (cantidad > heap->tamano)
+    {
+        cantidad = heap->tamano;
+    }
+
+    articulo **resultado = calloc((size_t)cantidad, sizeof(articulo *));
+    if (!resultado)
+    {
+        *total_encontrados = 0;
+        arbol_letras_destruir(heap);
+        return NULL;
+    }
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        resultado[i] = arbol_letras_extraer_max(heap);
+    }
+
+    while (heap->tamano > 0)
+    {
+        articulo *sobrante = arbol_letras_extraer_max(heap);
+        free(sobrante);
+    }
+
+    arbol_letras_destruir(heap);
+    *total_encontrados = cantidad;
+    return resultado;
+}
+
+// Lee archivo.txt, crea el heap adecuado e inserta todos los articulos
+articulo **ordenar_con_heaps(criterio_orden criterio, int cantidad, int *total_encontrados)
+{
+    int total_archivo = 0;
+    articulo **todos = cargar_articulos(&total_archivo);
+    if (!todos || total_archivo == 0)
+    {
+        *total_encontrados = 0;
+        return NULL;
+    }
+
+    if (cantidad > total_archivo)
+    {
+        cantidad = total_archivo;
+    }
+
+    int fallo = 0;
+
+    if (criterio == ANO_PUBLICACION)
+    {
+        arbol_numeros *heap = arbol_numeros_crear(total_archivo);
+        if (!heap)
+        {
+            *total_encontrados = 0;
+            for (int i = 0; i < total_archivo; i++)
+            {
+                free(todos[i]);
+            }
+            free(todos);
+            return NULL;
+        }
+
+        for (int i = 0; i < total_archivo; i++)
+        {
+            if (!arbol_numeros_insertar(heap, todos[i]))
+            {
+                fallo = 1;
+                break;
+            }
+        }
+
+        free(todos); // solo el arreglo, los articulos quedan en el heap
+
+        if (fallo)
+        {
+            while (heap->tamano > 0)
+            {
+                articulo *lib = arbol_numeros_extraer_max(heap);
+                free(lib);
+            }
+            arbol_numeros_destruir(heap);
+            *total_encontrados = 0;
+            return NULL;
+        }
+
+        return extraer_desde_heap_num(heap, cantidad, total_encontrados);
+    }
+    else
+    {
+        criterio_orden tipo = (criterio == NOMBRE_ARCHIVO) ? NOMBRE_ARCHIVO : TITULO_ALFABETICO;
+        arbol_letras *heap = arbol_letras_crear(total_archivo, tipo);
+        if (!heap)
+        {
+            *total_encontrados = 0;
+            for (int i = 0; i < total_archivo; i++)
+            {
+                free(todos[i]);
+            }
+            free(todos);
+            return NULL;
+        }
+
+        for (int i = 0; i < total_archivo; i++)
+        {
+            if (!arbol_letras_insertar(heap, todos[i]))
+            {
+                fallo = 1;
+                break;
+            }
+        }
+
+        free(todos);
+
+        if (fallo)
+        {
+            while (heap->tamano > 0)
+            {
+                articulo *lib = arbol_letras_extraer_max(heap);
+                free(lib);
+            }
+            arbol_letras_destruir(heap);
+            *total_encontrados = 0;
+            return NULL;
+        }
+
+        return extraer_desde_heap_letras(heap, cantidad, total_encontrados);
+    }
 }
 
 // Funcion para mostrar articulos ordenados
@@ -163,7 +326,15 @@ void ordenar_y_mostrar()
     // Realizar el ordenamiento
     printf("\nProcesando...\n");
     int total_encontrados;
-    articulo **resultados = ordenar_articulos(criterio, cantidad, &total_encontrados);
+    articulo **resultados = NULL;
+    if (criterio == TAMANO_TITULO)
+    {
+        resultados = ordenar_articulos(criterio, cantidad, &total_encontrados);
+    }
+    else
+    {
+        resultados = ordenar_con_heaps(criterio, cantidad, &total_encontrados);
+    }
 
     // Mostrar resultados
     mostrar_articulos(resultados, total_encontrados);

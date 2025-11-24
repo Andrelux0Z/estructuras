@@ -5,10 +5,195 @@
 #include "ordenador.h"
 #include "arboles.h"
 
-static void normalizar_utf8(char *texto);
-static void convertir_minusculas(char *texto);
+// Convierte todo el texto a minusculas
+void convertir_minusculas(char *texto) {
+    if (!texto) {
+        return;
+    }
 
-static char *leer_linea(FILE *archivo)
+    for (char *p = texto; *p; p++) {
+        *p = (char)tolower((unsigned char)*p);
+    }
+}
+
+// Quita acentos y simbolos basicos para no tener caracteres raros al comparar
+void normalizar_utf8(char *texto)
+{
+    if (!texto)
+    {
+        return;
+    }
+
+    size_t lectura = 0;
+    size_t escritura = 0;
+
+    while (texto[lectura] != '\0')
+    {
+        unsigned char c = (unsigned char)texto[lectura];
+
+        if (c < 0x80)
+        {
+            if (c != '"')
+            {
+                texto[escritura++] = (char)c;
+            }
+            lectura++;
+            continue;
+        }
+
+        if (c == 0xC3 && texto[lectura + 1] != '\0')
+        {
+            unsigned char siguiente = (unsigned char)texto[lectura + 1];
+            char reemplazo = 0;
+            switch (siguiente)
+            {
+            case 0x81: reemplazo = 'A'; break; // Á
+            case 0x89: reemplazo = 'E'; break; // É
+            case 0x8D: reemplazo = 'I'; break; // Í
+            case 0x93: reemplazo = 'O'; break; // Ó
+            case 0x9A: reemplazo = 'U'; break; // Ú
+            case 0xA1: reemplazo = 'a'; break; // á
+            case 0xA9: reemplazo = 'e'; break; // é
+            case 0xAD: reemplazo = 'i'; break; // í
+            case 0xB3: reemplazo = 'o'; break; // ó
+            case 0xBA: reemplazo = 'u'; break; // ú
+            case 0x91: reemplazo = 'N'; break; // Ñ
+            case 0xB1: reemplazo = 'n'; break; // ñ
+            case 0xBC: reemplazo = 'u'; break; // ü
+            case 0x82: reemplazo = 'A'; break; // Â
+            case 0xA2: reemplazo = 'a'; break; // â
+            default: break;
+            }
+
+            if (reemplazo)
+            {
+                texto[escritura++] = reemplazo;
+            }
+
+            lectura += 2;
+            continue;
+        }
+
+        if (c == 0xC2 && texto[lectura + 1] != '\0')
+        {
+            unsigned char siguiente = (unsigned char)texto[lectura + 1];
+            char reemplazo = 0;
+            switch (siguiente)
+            {
+            case 0xA1: reemplazo = '!'; break; // ¡
+            case 0xBF: reemplazo = '?'; break; // ¿
+            case 0xB0: reemplazo = 'o'; break; // º
+            case 0xBA: reemplazo = 'o'; break; // º
+            default: break;
+            }
+
+            if (reemplazo)
+            {
+                texto[escritura++] = reemplazo;
+            }
+
+            lectura += 2;
+            continue;
+        }
+
+        if (c == 0xE2 && texto[lectura + 1] != '\0' && texto[lectura + 2] != '\0')
+        {
+            unsigned char siguiente = (unsigned char)texto[lectura + 1];
+            unsigned char tercero = (unsigned char)texto[lectura + 2];
+
+            if (siguiente == 0x80)
+            {
+                if (tercero == 0x99)
+                {
+                    texto[escritura++] = '\'';
+                    lectura += 3;
+                    continue;
+                }
+                if (tercero == 0x9C || tercero == 0x9D)
+                {
+                    texto[escritura++] = '"';
+                    lectura += 3;
+                    continue;
+                }
+                if (tercero == 0x93 || tercero == 0x94)
+                {
+                    texto[escritura++] = '-';
+                    lectura += 3;
+                    continue;
+                }
+                if (tercero == 0xA6)
+                {
+                    texto[escritura++] = '.';
+                    texto[escritura++] = '.';
+                    texto[escritura++] = '.';
+                    lectura += 3;
+                    continue;
+                }
+            }
+
+            lectura += 3;
+            continue;
+        }
+
+        if ((c & 0xE0) == 0xC0 && texto[lectura + 1] != '\0')
+        {
+            lectura += 2;
+            continue;
+        }
+        if ((c & 0xF0) == 0xE0 && texto[lectura + 2] != '\0')
+        {
+            lectura += 3;
+            continue;
+        }
+        if ((c & 0xF8) == 0xF0 && texto[lectura + 3] != '\0')
+        {
+            lectura += 4;
+            continue;
+        }
+
+        lectura++;
+    }
+
+    texto[escritura] = '\0';
+    convertir_minusculas(texto);
+}
+
+// Quita espacios en blanco al inicio y final
+void recortar_blancos(char *texto)
+{
+    if (!texto)
+    {
+        return;
+    }
+
+    char *inicio = texto;
+    while (*inicio && isspace((unsigned char)*inicio))
+    {
+        inicio++;
+    }
+
+    char *fin = inicio + strlen(inicio);
+    while (fin > inicio && isspace((unsigned char)fin[-1]))
+    {
+        fin--;
+    }
+
+    size_t nuevo_tamano = (size_t)(fin - inicio);
+    if (inicio != texto && nuevo_tamano > 0)
+    {
+        memmove(texto, inicio, nuevo_tamano);
+    }
+    else if (inicio != texto && nuevo_tamano == 0)
+    {
+        texto[0] = '\0';
+        return;
+    }
+
+    texto[nuevo_tamano] = '\0';
+}
+
+// Lee una linea de tamano variable
+char *leer_linea(FILE *archivo)
 {
     size_t capacidad = 256;
     size_t longitud = 0;
@@ -56,248 +241,28 @@ static char *leer_linea(FILE *archivo)
     return buffer;
 }
 
-static void recortar_blancos(char *texto)
-{
-    if (!texto)
-    {
-        return;
-    }
-
-    char *inicio = texto;
-    while (*inicio && isspace((unsigned char)*inicio))
-    {
-        inicio++;
-    }
-
-    char *fin = inicio + strlen(inicio);
-    while (fin > inicio && isspace((unsigned char)fin[-1]))
-    {
-        fin--;
-    }
-
-    size_t nuevo_tamano = (size_t)(fin - inicio);
-    if (inicio != texto && nuevo_tamano > 0)
-    {
-        memmove(texto, inicio, nuevo_tamano);
-    }
-    else if (inicio != texto && nuevo_tamano == 0)
-    {
-        texto[0] = '\0';
-        return;
-    }
-
-    texto[nuevo_tamano] = '\0';
-}
-
-static void convertir_minusculas(char *texto)
-{
-    if (!texto)
-    {
-        return;
-    }
-
-    for (char *p = texto; *p; p++)
-    {
-        *p = (char)tolower((unsigned char)*p);
-    }
-}
-
-static void normalizar_utf8(char *texto)
-{
-    if (!texto)
-    {
-        return;
-    }
-
-    size_t lectura = 0;
-    size_t escritura = 0;
-
-    while (texto[lectura] != '\0')
-    {
-        unsigned char c = (unsigned char)texto[lectura];
-
-        if (c < 0x80)
-        {
-            if (c != '"')
-            {
-                texto[escritura++] = (char)c;
-            }
-            lectura++;
-            continue;
-        }
-
-        if (c == 0xC3 && texto[lectura + 1] != '\0')
-        {
-            unsigned char siguiente = (unsigned char)texto[lectura + 1];
-            char reemplazo = 0;
-            switch (siguiente)
-            {
-            case 0x81:
-                reemplazo = 'A';
-                break; // Á
-            case 0x89:
-                reemplazo = 'E';
-                break; // É
-            case 0x8D:
-                reemplazo = 'I';
-                break; // Í
-            case 0x93:
-                reemplazo = 'O';
-                break; // Ó
-            case 0x9A:
-                reemplazo = 'U';
-                break; // Ú
-            case 0xA1:
-                reemplazo = 'a';
-                break; // á
-            case 0xA9:
-                reemplazo = 'e';
-                break; // é
-            case 0xAD:
-                reemplazo = 'i';
-                break; // í
-            case 0xB3:
-                reemplazo = 'o';
-                break; // ó
-            case 0xBA:
-                reemplazo = 'u';
-                break; // ú
-            case 0x91:
-                reemplazo = 'N';
-                break; // Ñ
-            case 0xB1:
-                reemplazo = 'n';
-                break; // ñ
-            case 0xBC:
-                reemplazo = 'u';
-                break; // ü
-            case 0x82:
-                reemplazo = 'A';
-                break; // Â
-            case 0xA2:
-                reemplazo = 'a';
-                break; // â
-            default:
-                break;
-            }
-
-            if (reemplazo)
-            {
-                texto[escritura++] = reemplazo;
-            }
-
-            lectura += 2;
-            continue;
-        }
-
-        if (c == 0xC2 && texto[lectura + 1] != '\0')
-        {
-            unsigned char siguiente = (unsigned char)texto[lectura + 1];
-            char reemplazo = 0;
-            switch (siguiente)
-            {
-            case 0xA1:
-                reemplazo = '!';
-                break; // ¡
-            case 0xBF:
-                reemplazo = '?';
-                break; // ¿
-            case 0xB0:
-                reemplazo = 'o';
-                break; // º
-            case 0xBA:
-                reemplazo = 'o';
-                break; // º
-            default:
-                break;
-            }
-
-            if (reemplazo)
-            {
-                texto[escritura++] = reemplazo;
-            }
-
-            lectura += 2;
-            continue;
-        }
-
-        if (c == 0xE2 && texto[lectura + 1] != '\0' && texto[lectura + 2] != '\0')
-        {
-            unsigned char siguiente = (unsigned char)texto[lectura + 1];
-            unsigned char tercero = (unsigned char)texto[lectura + 2];
-
-            if (siguiente == 0x80)
-            {
-                if (tercero == 0x99)
-                { // '
-                    texto[escritura++] = '\'';
-                    lectura += 3;
-                    continue;
-                }
-                if (tercero == 0x9C || tercero == 0x9D)
-                { // "
-                    texto[escritura++] = '"';
-                    lectura += 3;
-                    continue;
-                }
-                if (tercero == 0x93 || tercero == 0x94)
-                { // -
-                    texto[escritura++] = '-';
-                    lectura += 3;
-                    continue;
-                }
-                if (tercero == 0xA6)
-                { // ...
-                    texto[escritura++] = '.';
-                    texto[escritura++] = '.';
-                    texto[escritura++] = '.';
-                    lectura += 3;
-                    continue;
-                }
-            }
-
-            lectura += 3;
-            continue;
-        }
-
-        if ((c & 0xE0) == 0xC0 && texto[lectura + 1] != '\0')
-        {
-            lectura += 2;
-            continue;
-        }
-        if ((c & 0xF0) == 0xE0 && texto[lectura + 2] != '\0')
-        {
-            lectura += 3;
-            continue;
-        }
-        if ((c & 0xF8) == 0xF0 && texto[lectura + 3] != '\0')
-        {
-            lectura += 4;
-            continue;
-        }
-
-        lectura++;
-    }
-
-    texto[escritura] = '\0';
-    convertir_minusculas(texto);
-}
-
 // Extrae el campo n de una linea delimitada por '|'
-// Retorna un puntero al campo extraido (debe ser liberado por el caller)
 char *obtener_campo(const char *linea, int n)
 {
     char *copia = strdup(linea);
+    if (!copia)
+    {
+        return NULL;
+    }
 
-    char *parte = strtok(copia, "|"); // Esto separa la linea en pedazos, reemplaza '|' por '\0'
+    char *parte = strtok(copia, "|");
     int contador = 1;
 
-    while (contador < n)
+    while (contador < n && parte)
     {
-        parte = strtok(NULL, "|"); // Dentro de strtok hay un puntero a la ultima posición en la que estuvo
-                                   // Cuando le paso NULL, sigue desde ahí
-                                   // Entonces esto básicamente está recorriendo una lista de textos
+        parte = strtok(NULL, "|");
         contador++;
+    }
+
+    if (!parte)
+    {
+        free(copia);
+        return NULL;
     }
 
     char *resultado = strdup(parte);
@@ -306,13 +271,13 @@ char *obtener_campo(const char *linea, int n)
     return resultado;
 }
 
-// Funcion para contar palabras en un texto (separadas por espacios)
+// Cuenta palabras separadas por espacios
 int contar_palabras(const char *texto)
 {
     if (!texto || texto[0] == '\0')
         return 0;
 
-    int count = 0;
+    int contador = 0;
     int en_palabra = 0;
 
     for (int i = 0; texto[i] != '\0'; i++)
@@ -321,7 +286,7 @@ int contar_palabras(const char *texto)
         {
             if (!en_palabra)
             {
-                count++;
+                contador++;
                 en_palabra = 1;
             }
         }
@@ -331,87 +296,10 @@ int contar_palabras(const char *texto)
         }
     }
 
-    return count;
+    return contador;
 }
 
-// Funcion de comparacion generica segun criterio
-// Retorna: >0 si a>b, <0 si a<b, 0 si iguales
-int comparar_articulos(articulo *a, articulo *b, criterio_orden criterio)
-{
-    int resultado = 0;
-
-    switch (criterio)
-    {
-    case TITULO_ALFABETICO:
-        resultado = strcmp(a->titulo, b->titulo);
-        break;
-
-    case TAMANO_TITULO:
-        resultado = contar_palabras(a->titulo) - contar_palabras(b->titulo);
-        break;
-
-    case NOMBRE_ARCHIVO:
-        resultado = strcmp(a->ruta, b->ruta);
-        break;
-
-    case ANO_PUBLICACION:
-        resultado = a->ano - b->ano;
-        break;
-    }
-
-    return resultado;
-}
-
-// Funcion heapify_down para mantener propiedad max-heap
-void heapify_down_generico(articulo **datos, int tamano, int i, criterio_orden criterio)
-{
-    int mayor = i;
-    int izq = hijo_izq(i);
-    int der = hijo_der(i);
-
-    // Comparar con hijo izquierdo
-    if (izq < tamano && comparar_articulos(datos[izq], datos[mayor], criterio) > 0)
-    {
-        mayor = izq;
-    }
-
-    // Comparar con hijo derecho
-    if (der < tamano && comparar_articulos(datos[der], datos[mayor], criterio) > 0)
-    {
-        mayor = der;
-    }
-
-    // Si el mayor no es la raiz, hacer swap y recursion
-    if (mayor != i)
-    {
-        swap_articulo(&datos[i], &datos[mayor]);
-        heapify_down_generico(datos, tamano, mayor, criterio);
-    }
-}
-
-// Funcion para extraer el maximo del heap
-articulo *extraer_maximo_heap(articulo **datos, int *tamano, criterio_orden criterio)
-{
-    if (*tamano <= 0)
-        return NULL;
-
-    // El maximo esta en la raiz
-    articulo *max = datos[0];
-
-    // Mover el ultimo elemento a la raiz
-    datos[0] = datos[*tamano - 1];
-    (*tamano)--;
-
-    // Restaurar propiedad del heap
-    if (*tamano > 0)
-    {
-        heapify_down_generico(datos, *tamano, 0, criterio);
-    }
-
-    return max;
-}
-
-// Funcion para cargar todos los articulos del archivo
+// Lee todos los articulos del archivo de texto
 articulo **cargar_articulos(int *total_articulos)
 {
     if (!total_articulos)
@@ -454,7 +342,6 @@ articulo **cargar_articulos(int *total_articulos)
         if (!art)
         {
             free(linea);
-            linea = NULL;
             error_memoria = 1;
             break;
         }
@@ -468,26 +355,21 @@ articulo **cargar_articulos(int *total_articulos)
             {
             case 0:
                 strncpy(art->nombre, token, sizeof(art->nombre) - 1);
-                art->nombre[sizeof(art->nombre) - 1] = '\0';
                 break;
             case 1:
                 strncpy(art->apellidos, token, sizeof(art->apellidos) - 1);
-                art->apellidos[sizeof(art->apellidos) - 1] = '\0';
                 break;
             case 2:
                 strncpy(art->titulo, token, sizeof(art->titulo) - 1);
-                art->titulo[sizeof(art->titulo) - 1] = '\0';
                 break;
             case 3:
                 strncpy(art->ruta, token, sizeof(art->ruta) - 1);
-                art->ruta[sizeof(art->ruta) - 1] = '\0';
                 break;
             case 4:
                 art->ano = atoi(token);
                 break;
             case 5:
                 strncpy(art->resumen, token, sizeof(art->resumen) - 1);
-                art->resumen[sizeof(art->resumen) - 1] = '\0';
                 break;
             }
             campo++;
@@ -510,7 +392,6 @@ articulo **cargar_articulos(int *total_articulos)
             if (!temporal)
             {
                 free(art);
-                linea = NULL;
                 error_memoria = 1;
                 break;
             }
@@ -531,14 +412,12 @@ articulo **cargar_articulos(int *total_articulos)
             free(articulos[i]);
         }
         free(articulos);
-        *total_articulos = 0;
         return NULL;
     }
 
     if (cantidad == 0)
     {
         free(articulos);
-        *total_articulos = 0;
         return NULL;
     }
 
@@ -552,21 +431,140 @@ articulo **cargar_articulos(int *total_articulos)
     return articulos;
 }
 
-// Funcion para construir un heap desde un arreglo (heapify)
-void construir_heap(articulo **datos, int tamano, criterio_orden criterio)
+// Ordena usando el heap numerico (anos)
+articulo **ordenar_por_ano(articulo **todos, int total, int cantidad)
 {
-    // Empezar desde el ultimo nodo no-hoja y hacer heapify hacia arriba
-    for (int i = (tamano / 2) - 1; i >= 0; i--)
+    arbol_numeros *arbol = arbol_numeros_crear(total);
+    if (!arbol)
     {
-        heapify_down_generico(datos, tamano, i, criterio);
+        free(todos);
+        return NULL;
     }
+    for (int i = 0; i < total; i++)
+    {
+        arbol_numeros_insertar(arbol, todos[i]);
+    }
+    free(todos);
+
+    articulo **resultado = calloc((size_t)cantidad, sizeof(articulo *));
+    if (!resultado)
+    {
+        while (arbol->tamano > 0)
+        {
+            articulo *lib = arbol_numeros_extraer_max(arbol);
+            free(lib);
+        }
+        arbol_numeros_destruir(arbol);
+        return NULL;
+    }
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        resultado[i] = arbol_numeros_extraer_max(arbol);
+    }
+
+    while (arbol->tamano > 0)
+    {
+        articulo *lib = arbol_numeros_extraer_max(arbol);
+        free(lib);
+    }
+    arbol_numeros_destruir(arbol);
+
+    return resultado;
 }
 
-// Funcion principal de ordenamiento usando heap
+// Ordena usando el heap de texto (titulo o ruta)
+articulo **ordenar_por_texto(articulo **todos, int total, int cantidad, criterio_orden criterio)
+{
+    arbol_letras *arbol = arbol_letras_crear(total, criterio);
+    if (!arbol)
+    {
+        free(todos);
+        return NULL;
+    }
+    for (int i = 0; i < total; i++)
+    {
+        arbol_letras_insertar(arbol, todos[i]);
+    }
+    free(todos);
+
+    articulo **resultado = calloc((size_t)cantidad, sizeof(articulo *));
+    if (!resultado)
+    {
+        while (arbol->tamano > 0)
+        {
+            articulo *lib = arbol_letras_extraer_max(arbol);
+            free(lib);
+        }
+        arbol_letras_destruir(arbol);
+        return NULL;
+    }
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        resultado[i] = arbol_letras_extraer_max(arbol);
+    }
+
+    while (arbol->tamano > 0)
+    {
+        articulo *lib = arbol_letras_extraer_max(arbol);
+        free(lib);
+    }
+    arbol_letras_destruir(arbol);
+
+    return resultado;
+}
+
+// Comparador para qsort por tamano de titulo
+int comparar_tamano(const void *a, const void *b)
+{
+    const articulo *art_a = *(const articulo **)a;
+    const articulo *art_b = *(const articulo **)b;
+
+    int palabras_a = contar_palabras(art_a->titulo);
+    int palabras_b = contar_palabras(art_b->titulo);
+
+    if (palabras_a == palabras_b)
+    {
+        return 0;
+    }
+    return (palabras_a < palabras_b) ? -1 : 1;
+}
+
+// Ordena por cantidad de palabras en el titulo
+articulo **ordenar_por_tamano(articulo **todos, int total, int cantidad)
+{
+    qsort(todos, (size_t)total, sizeof(articulo *), comparar_tamano);
+
+    articulo **resultado = calloc((size_t)cantidad, sizeof(articulo *));
+    if (!resultado)
+    {
+        for (int i = 0; i < total; i++)
+        {
+            free(todos[i]);
+        }
+        free(todos);
+        return NULL;
+    }
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        resultado[i] = todos[i];
+    }
+
+    for (int i = cantidad; i < total; i++)
+    {
+        free(todos[i]);
+    }
+    free(todos);
+
+    return resultado;
+}
+
+// Funcion principal que el resto del programa usa
 articulo **ordenar_articulos(criterio_orden criterio, int cantidad, int *total_encontrados)
 {
-    // Cargar todos los articulos
-    int total;
+    int total = 0;
     articulo **todos = cargar_articulos(&total);
 
     if (!todos || total == 0)
@@ -575,57 +573,32 @@ articulo **ordenar_articulos(criterio_orden criterio, int cantidad, int *total_e
         return NULL;
     }
 
-    // Ajustar cantidad si es mayor al total
     if (cantidad > total)
     {
         cantidad = total;
     }
 
-    // Construir heap con todos los articulos
-    construir_heap(todos, total, criterio);
+    articulo **resultado = NULL;
 
-    // Heapsort: ordenar arreglo completo de menor a mayor
-    for (int tamano_actual = total; tamano_actual > 1; tamano_actual--)
+    switch (criterio)
     {
-        swap_articulo(&todos[0], &todos[tamano_actual - 1]);
-        heapify_down_generico(todos, tamano_actual - 1, 0, criterio);
+    case TITULO_ALFABETICO:
+    case NOMBRE_ARCHIVO:
+        resultado = ordenar_por_texto(todos, total, cantidad, criterio);
+        break;
+    case ANO_PUBLICACION:
+        resultado = ordenar_por_ano(todos, total, cantidad);
+        break;
+    case TAMANO_TITULO:
+        resultado = ordenar_por_tamano(todos, total, cantidad);
+        break;
     }
 
-    // Reservar espacio para los resultados
-    articulo **resultado = calloc(cantidad, sizeof(articulo *));
-    if (!resultado)
-    {
-        for (int i = 0; i < total; i++)
-        {
-            free(todos[i]);
-        }
-        free(todos);
-        *total_encontrados = 0;
-        return NULL;
-    }
-
-    // Copiar los primeros 'cantidad' articulos ya ordenados
-    for (int i = 0; i < cantidad; i++)
-    {
-        resultado[i] = todos[i];
-        todos[i] = NULL;
-    }
-
-    // Liberar articulos restantes no utilizados
-    for (int i = cantidad; i < total; i++)
-    {
-        if (todos[i])
-        {
-            free(todos[i]);
-        }
-    }
-    free(todos);
-
-    *total_encontrados = cantidad;
+    *total_encontrados = resultado ? cantidad : 0;
     return resultado;
 }
 
-// Funcion para liberar memoria de articulos
+// Libera la memoria de los articulos recibidos
 void liberar_articulos(articulo **articulos, int cantidad)
 {
     if (!articulos)

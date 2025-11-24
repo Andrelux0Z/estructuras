@@ -10,7 +10,7 @@ char *obtener_linea(int n)
 {
     FILE *archivo = fopen("archivo.txt", "r");
 
-    char buffer[1450]; // revisar esto
+    char buffer[265]; // revisar esto
     int contador = 1;
 
     // En esta linea se extrae la primera linea y mueve un puntero

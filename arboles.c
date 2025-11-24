@@ -32,23 +32,31 @@ void swap_articulo(articulo** a, articulo** b) {
 // Esta funcion crea los arboles, recibimos capaciddad maxima inicial y retornamos el arbol
 arbol_numeros* arbol_numeros_crear(int capacidad_inicial) {
     arbol_numeros* arbol = calloc(1, sizeof(arbol_numeros));
+    if (!arbol) {
+        return NULL;
+    }
 
     arbol->datos = calloc(1, sizeof(articulo*) * capacidad_inicial);
+    if (!arbol->datos) {
+        free(arbol);
+        return NULL;
+    }
     arbol->tamano = 0;
     arbol->capacidad = capacidad_inicial;
     return arbol;
 }
 
 // Funcion para poner numero en el arbol y que se acomode
-// nota: como estamos implementando un max heap, los grandes van arriba
+// nota: usamos min-heap, los mas chicos van arriba
 void acomodar_numero(arbol_numeros* arbol, int i) {
     while (i > 0) {
         int p = padre(i);
 
-        if (arbol->datos[i]->ano > arbol->datos[p]->ano) {
+        if (arbol->datos[i]->ano < arbol->datos[p]->ano) {
             swap_articulo(&arbol->datos[i], &arbol->datos[p]);
             i = p;
         } else {
+            break;
         }
     }
 }
@@ -61,7 +69,9 @@ int arbol_numeros_insertar(arbol_numeros* arbol, articulo *art) {
 
         int nuevo = arbol->capacidad * 2;
         articulo** temp = realloc(arbol->datos, sizeof(articulo*) * nuevo);
-
+        if (!temp) {
+            return 0;
+        }
         arbol->datos = temp;
         arbol->capacidad = nuevo;
     }
@@ -74,39 +84,44 @@ int arbol_numeros_insertar(arbol_numeros* arbol, articulo *art) {
 }
 
 // Con esta funcion nosotros obtenemos el texto que se va a usar como clave
-char* obtener_clave_texto(articulo* a, orden_letras tipo) {
-    switch (tipo) {
-        case TITULO:    
-            return a->titulo;
-        case APELLIDOS: 
-            return a->apellidos;
-        case RUTA:      
+char* obtener_clave_texto(articulo* a, criterio_orden criterio) {
+    switch (criterio) {
+        case NOMBRE_ARCHIVO:
             return a->ruta;
-        default:              
+        case TITULO_ALFABETICO:
+        default:
             return a->titulo;
     }
 }
 
 // Esta funcion crea los arboles, recibimos capaciddad maxima inicial y retornamos el arbol
-arbol_letras* arbol_letras_crear(int capacidad_inicial, orden_letras tipo) {
+arbol_letras* arbol_letras_crear(int capacidad_inicial, criterio_orden criterio) {
     arbol_letras* arbol = calloc(1, sizeof(arbol_letras));
+    if (!arbol) {
+        return NULL;
+    }
 
     arbol->datos = calloc(capacidad_inicial, sizeof(articulo*));
+    if (!arbol->datos) {
+        free(arbol);
+        return NULL;
+    }
+
     arbol->tamano = 0;
     arbol->capacidad = capacidad_inicial;
-    arbol->orden = tipo;
+    arbol->criterio = criterio;
     return arbol;
 }
 
 // Funcion para poner letras en el arbol y que se acomoden
-// nota: como estamos implementando un max heap, los grandes van arriba
+// nota: min-heap, alfabeticamente los primeros van arriba
 void acomodar_letras(arbol_letras* arbol, int i) {
     while (i > 0) {
         int p = padre(i);
-        char* hijo = obtener_clave_texto(arbol->datos[i], arbol->orden);
-        char* padre = obtener_clave_texto(arbol->datos[p], arbol->orden);
+        char* hijo = obtener_clave_texto(arbol->datos[i], arbol->criterio);
+        char* padre = obtener_clave_texto(arbol->datos[p], arbol->criterio);
 
-        if (strcmp(hijo, padre) > 0) {
+        if (strcmp(hijo, padre) < 0) {
             swap_articulo(&arbol->datos[i], &arbol->datos[p]);
             i = p;
         } else {
@@ -120,6 +135,9 @@ int arbol_letras_insertar(arbol_letras* arbol, articulo *art) {
     if (arbol->tamano == arbol->capacidad) {
         int nueva = arbol->capacidad * 2;
         articulo** temp = realloc(arbol->datos, sizeof(articulo*) * nueva);
+        if (!temp) {
+            return 0;
+        }
         
         arbol->datos = temp;
         arbol->capacidad = nueva;
@@ -132,3 +150,109 @@ int arbol_letras_insertar(arbol_letras* arbol, articulo *art) {
     return 1;
 }
 
+// Reacomoda hacia abajo en el heap numerico para mantener la propiedad
+void acomodar_abajo_nums(arbol_numeros* arbol, int i) {
+    while (1) {
+        int mayor = i;
+        int izq = hijo_izq(i);
+        int der = hijo_der(i);
+
+        if (izq < arbol->tamano && arbol->datos[izq]->ano < arbol->datos[mayor]->ano) {
+            mayor = izq;
+        }
+        if (der < arbol->tamano && arbol->datos[der]->ano < arbol->datos[mayor]->ano) {
+            mayor = der;
+        }
+
+        if (mayor == i) {
+            break;
+        }
+
+        swap_articulo(&arbol->datos[i], &arbol->datos[mayor]);
+        i = mayor;
+    }
+}
+
+// Reacomoda hacia abajo en el heap de texto
+void acomodar_abajo_letras(arbol_letras* arbol, int i) {
+    while (1) {
+        int mayor = i;
+        int izq = hijo_izq(i);
+        int der = hijo_der(i);
+
+        if (izq < arbol->tamano) {
+            char* hijo = obtener_clave_texto(arbol->datos[izq], arbol->criterio);
+            char* padre = obtener_clave_texto(arbol->datos[mayor], arbol->criterio);
+            if (strcmp(hijo, padre) < 0) {
+                mayor = izq;
+            }
+        }
+
+        if (der < arbol->tamano) {
+            char* hijo = obtener_clave_texto(arbol->datos[der], arbol->criterio);
+            char* padre = obtener_clave_texto(arbol->datos[mayor], arbol->criterio);
+            if (strcmp(hijo, padre) < 0) {
+                mayor = der;
+            }
+        }
+
+        if (mayor == i) {
+            break;
+        }
+
+        swap_articulo(&arbol->datos[i], &arbol->datos[mayor]);
+        i = mayor;
+    }
+}
+
+// Quita el elemento mas chico del heap numerico
+articulo* arbol_numeros_extraer_max(arbol_numeros* arbol) {
+    if (!arbol || arbol->tamano == 0) {
+        return NULL;
+    }
+
+    articulo* max = arbol->datos[0];
+    arbol->tamano--;
+
+    if (arbol->tamano > 0) {
+        arbol->datos[0] = arbol->datos[arbol->tamano];
+        acomodar_abajo_nums(arbol, 0);
+    }
+
+    return max;
+}
+
+// Quita el elemento mas chico del heap de texto
+articulo* arbol_letras_extraer_max(arbol_letras* arbol) {
+    if (!arbol || arbol->tamano == 0) {
+        return NULL;
+    }
+
+    articulo* max = arbol->datos[0];
+    arbol->tamano--;
+
+    if (arbol->tamano > 0) {
+        arbol->datos[0] = arbol->datos[arbol->tamano];
+        acomodar_abajo_letras(arbol, 0);
+    }
+
+    return max;
+}
+
+// Libera la memoria del heap sin tocar los articulos almacenados
+void arbol_numeros_destruir(arbol_numeros* arbol) {
+    if (!arbol) {
+        return;
+    }
+    free(arbol->datos);
+    free(arbol);
+}
+
+// Libera la memoria del heap sin tocar los articulos almacenados
+void arbol_letras_destruir(arbol_letras* arbol) {
+    if (!arbol) {
+        return;
+    }
+    free(arbol->datos);
+    free(arbol);
+}
