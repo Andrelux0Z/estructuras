@@ -10,12 +10,12 @@ char *obtener_linea(int n)
 {
     FILE *archivo = fopen("archivo.txt", "r");
 
-    char buffer[265]; // Es 264 por cómo Sebas acomodó los archivos
+    char buffer[1450]; // revisar esto
     int contador = 1;
 
-    while (fgets(buffer, sizeof(buffer), archivo)) // En esta linea se extrae la primera linea y mueve un puntero
-                                                   // Cómo es un bucle el puntero se va moviendo hasta que llega a la que ocupamos
-    {
+    // En esta linea se extrae la primera linea y mueve un puntero
+    // Cómo es un bucle el puntero se va moviendo hasta que llega a la que ocupamos
+    while (fgets(buffer, sizeof(buffer), archivo)) {
         if (contador == n)
         {
             fclose(archivo);
